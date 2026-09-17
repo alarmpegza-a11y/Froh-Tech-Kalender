@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PE-MONTAGE Live</title>
+    <title>Froh-Tech Kalender</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -323,7 +323,7 @@ function downloadEntryPDF(entry) {
 
             doc.setFillColor(37,99,235); doc.rect(0,0,pageW,18,'F');
             setFont(13,'bold',[255,255,255]); doc.text('AUFTRAG',margin,12);
-            setFont(9,'normal',[180,210,255]); doc.text('PE-MONTAGE',pageW-margin,12,{align:'right'});
+            setFont(9,'normal',[180,210,255]); doc.text('FROH-TECH',pageW-margin,12,{align:'right'});
             y=26;
 
             setFont(16,'bold',[0,0,0]);
@@ -394,7 +394,7 @@ function downloadEntryPDF(entry) {
                 doc.setPage(pageNum);
                 doc.setFillColor(245,248,255);doc.rect(0,288,pageW,10,'F');
                 setFont(7,'normal',[150,150,150]);
-                doc.text('PE-MONTAGE Tourendisposition',margin,294);
+                doc.text('Froh-Tech Tourendisposition',margin,294);
                 doc.text(`${new Date().toLocaleDateString('de-DE')} · Seite ${pageNum}/${totalPages}`,pageW-margin,294,{align:'right'});
             };
 
@@ -407,7 +407,7 @@ function downloadEntryPDF(entry) {
                     setFont(10,'bold',[255,255,255]);
                     doc.text(`${(entry.customer||'').toUpperCase()} — FOTO ${idx+1} / ${images.length}`,margin,10);
                     setFont(8,'normal',[180,210,255]);
-                    doc.text(`PE-MONTAGE`,pageW-margin,10,{align:'right'});
+                    doc.text(`FROH-TECH`,pageW-margin,10,{align:'right'});
                     setFont(8,'normal',[100,100,100]);
                     const auftragsInfo = [cleanAuftragsNr(entry.auftragsNr),entry.address,formatDate(entry.deliveryDate)].filter(Boolean).join(' · ');
                     doc.text(auftragsInfo, margin, 20);
@@ -509,7 +509,7 @@ function downloadMonteurBillingPDF(entries, teamName) {
                 doc.setPage(i);
                 doc.setFillColor(240,253,244); doc.rect(0,pageH-10,pageW,10,'F');
                 setFont(7,'normal',[100,150,120]);
-                doc.text(`PE-MONTAGE · Monteur-Abrechnung · Gruppe: ${teamName}`,margin,pageH-3);
+                doc.text(`FROH-TECH · Monteur-Abrechnung · Gruppe: ${teamName}`,margin,pageH-3);
                 doc.text(`${today} · Seite ${i}/${totalPages}`,pageW-margin,pageH-3,{align:'right'});
             }
 
@@ -1386,12 +1386,20 @@ function GateScreen({ onSuccess }) {
             }
         }
     };
+    useEffect(()=>{
+        const onKey = (e) => {
+            if(e.key>='0' && e.key<='9'){ e.preventDefault(); handleAction(e.key); }
+            else if(e.key==='Backspace' || e.key==='Delete' || e.key==='Escape'){ e.preventDefault(); handleAction('C'); }
+        };
+        window.addEventListener('keydown', onKey);
+        return ()=>window.removeEventListener('keydown', onKey);
+    },[pin, checking]);
     return (
         <div style={{minHeight:'100vh',background:'#030712',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
             <div style={{width:'100%',maxWidth:340,textAlign:'center'}}>
                 <div style={{marginBottom:48}}>
                     <div style={{width:80,height:80,background:'linear-gradient(135deg,#0ea5e9,#6366f1)',borderRadius:24,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 24px',boxShadow:'0 20px 40px rgba(14,165,233,0.3)'}}><Icon name="lock" size={40} className="text-white"/></div>
-                    <h1 style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:'#fff',fontStyle:'italic',textTransform:'uppercase',margin:'0 0 8px'}}>PE-MONTAGE</h1>
+                    <h1 style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:'#fff',fontStyle:'italic',textTransform:'uppercase',margin:'0 0 8px'}}>Froh-Tech</h1>
                     <p style={{color:'#475569',margin:0,fontWeight:700,letterSpacing:'0.2em',fontSize:10,textTransform:'uppercase'}}>Zugangscode</p>
                 </div>
                 <div style={{marginBottom:32}}>
@@ -1428,12 +1436,20 @@ function LoginScreen({ onLogin, teams }) {
             else { setError('Falscher PIN'); setTimeout(() => { setPin(''); setError(''); }, 1000); }
         }
     };
+    useEffect(()=>{
+        const onKey = (e) => {
+            if(e.key>='0' && e.key<='9'){ e.preventDefault(); handleAction(e.key); }
+            else if(e.key==='Backspace' || e.key==='Delete' || e.key==='Escape'){ e.preventDefault(); handleAction('C'); }
+        };
+        window.addEventListener('keydown', onKey);
+        return ()=>window.removeEventListener('keydown', onKey);
+    },[pin]);
     return (
         <div style={{minHeight:'100vh',background:'#030712',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
             <div style={{width:'100%',maxWidth:340,textAlign:'center'}}>
                 <div style={{marginBottom:48}}>
                     <div style={{width:80,height:80,background:'linear-gradient(135deg,#3b82f6,#6366f1)',borderRadius:24,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 24px',boxShadow:'0 20px 40px rgba(99,102,241,0.3)'}}><Icon name="calendar" size={40} className="text-white"/></div>
-                    <h1 style={{fontSize:28,fontWeight:900,letterSpacing:-1,color:'#fff',fontStyle:'italic',textTransform:'uppercase',margin:'0 0 8px'}}>PE-MONTAGE</h1>
+                    <h1 style={{fontSize:28,fontWeight:900,letterSpacing:-1,color:'#fff',fontStyle:'italic',textTransform:'uppercase',margin:'0 0 8px'}}>Froh-Tech</h1>
                     <p style={{color:'#475569',margin:'0 0 12px',fontWeight:700,letterSpacing:'0.2em',fontSize:10,textTransform:'uppercase'}}>Tourendisposition</p>
                     <div style={{display:'flex',justifyContent:'center'}}><span className="live-badge"><span className="live-dot"></span>{isFirebase?'🔥 Firestore Live':'Lokal (Offline)'}</span></div>
                 </div>
@@ -2072,7 +2088,7 @@ function CrossTeamCopyModal({ entry, currentTeam, teams, onClose, onCopied }) {
 // ============================================================
 // CALENDAR VIEW
 // ============================================================
-function CalendarView({ team, teams=[], onBack, isAdminAccess=false, activeCalType: initialCalType, scrollToEntry=null, voicePrefill=null, onVoicePrefillApplied=null }) {
+function CalendarView({ team, teams=[], onBack, isAdminAccess=false, isMontageFilterTeam=false, activeCalType: initialCalType, scrollToEntry=null, voicePrefill=null, onVoicePrefillApplied=null }) {
     const isMobile = useIsMobile();
     const [calEntries, setCalEntries] = useState([]);
     const [calWeek, setCalWeek] = useState(() => { if(scrollToEntry)return parseDateSafe(scrollToEntry.deliveryDate); return new Date(); });
@@ -2097,7 +2113,7 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, activeCalTy
     const [hoursQueue, setHoursQueue] = useState(null); // {entry} — wartet auf Stundenerfassung
     const [selectedMonteur, setSelectedMonteur] = useState(null);
     const [assignEntry, setAssignEntry] = useState(null);
-    const isMonteurPickerTeam = team.id === 'froh-tech-montage';
+    const isMonteurPickerTeam = isMontageFilterTeam;
 
     // ── FERIEN / ABWESENHEITEN DER MONTEURE ──
     const [monteurs, setMonteurs] = useState([]);
@@ -2201,13 +2217,55 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, activeCalTy
         return () => document.removeEventListener('mousedown', handleClick);
     }, []);
 
+    // ── FROH-TECH-ERWEITERUNG: ESC schliesst das oberste offene Fenster ──
+    useEffect(()=>{
+        const onKey = (e) => {
+            if(e.key!=='Escape') return;
+            if(hoursQueue) return; // Stunden sind pflicht, ESC überspringt sie nicht
+            if(qtyEntry){ setQtyEntry(null); return; }
+            if(assignEntry){ setAssignEntry(null); return; }
+            if(blockEntry){ setBlockEntry(null); return; }
+            if(crossCopyEntry){ setCrossCopyEntry(null); return; }
+            if(editCalEntry){ setEditCalEntry(null); return; }
+            if(moveEntry){ setMoveEntry(null); return; }
+            if(copyEntry){ setCopyEntry(null); return; }
+            if(showFerienModal){ setShowFerienModal(false); return; }
+            if(standbyDateModal){ setStandbyDateModal(null); return; }
+            if(showStandbyPicker){ setShowStandbyPicker(null); return; }
+            if(showCalImport){ setShowCalImport(false); return; }
+            if(showAIImport){ setShowAIImport(false); return; }
+            if(showMonteurBilling){ setShowMonteurBilling(false); return; }
+        };
+        window.addEventListener('keydown', onKey);
+        return ()=>window.removeEventListener('keydown', onKey);
+    },[hoursQueue,qtyEntry,assignEntry,blockEntry,crossCopyEntry,editCalEntry,moveEntry,copyEntry,showFerienModal,standbyDateModal,showStandbyPicker,showCalImport,showAIImport,showMonteurBilling]);
+
+    const monteurUnlockedDayIndex = useMemo(()=>{
+        if(!(isMonteurPickerTeam && !isAdminAccess && selectedMonteur)) return days.length-1;
+        let idx = 0;
+        for(let i=0;i<days.length;i++){
+            const dayStr = toLocalDateStr(days[i]);
+            const dayEntries = calEntries.filter(e=>{
+                if((e.calType||'montage')!==activeCalType) return false;
+                if(!(e.assignedMonteure||[]).includes(selectedMonteur)) return false;
+                if(e.isMultiDay&&e.endDate) return dayStr>=e.deliveryDate.substring(0,10)&&dayStr<=e.endDate.substring(0,10);
+                return e.deliveryDate&&e.deliveryDate.substring(0,10)===dayStr;
+            });
+            const allHandled = dayEntries.length===0 || dayEntries.every(e=>e.isDone||e.isBlocked);
+            if(allHandled && i<days.length-1){ idx = i+1; } else { idx = i; break; }
+        }
+        return idx;
+    },[calEntries,activeCalType,isMonteurPickerTeam,isAdminAccess,selectedMonteur,days]);
+
     const filteredEntries = useMemo(()=>{
         let list = calEntries.filter(e=>(e.calType||'montage')===activeCalType);
         if(isMonteurPickerTeam && !isAdminAccess && selectedMonteur){
             list = list.filter(e=> (e.assignedMonteure||[]).includes(selectedMonteur));
+            const unlockedDateStr = toLocalDateStr(days[monteurUnlockedDayIndex]);
+            list = list.filter(e=> (e.deliveryDate||'').substring(0,10) <= unlockedDateStr);
         }
         return list.sort((a,b)=>{const da=a.deliveryDate||'',db_=b.deliveryDate||'';if(da<db_)return -1;if(da>db_)return 1;return(a.createdAt||'')<(b.createdAt||'')?-1:1;});
-    },[calEntries,activeCalType,isMonteurPickerTeam,isAdminAccess,selectedMonteur]);
+    },[calEntries,activeCalType,isMonteurPickerTeam,isAdminAccess,selectedMonteur,days,monteurUnlockedDayIndex]);
 
     const {entryLanes,numLanes,laneVisibleEntries} = useMemo(()=>{
         const weekStart=toLocalDateStr(days[0]),weekEnd=toLocalDateStr(days[5]);
@@ -2415,6 +2473,12 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, activeCalTy
             <div style={{background:currentCalConfig.bg,padding:'5px 16px',textAlign:'center',fontSize:9,fontWeight:900,color:'#fff',textTransform:'uppercase',letterSpacing:2}}>
                 <span style={{display:'inline-block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100%'}}>{currentCalConfig.banner} — KW {kw} — {formatDate(weekStart)} bis {formatDate(weekEnd)}</span>
             </div>
+
+            {isMonteurPickerTeam && !isAdminAccess && selectedMonteur && (
+                <div style={{background:'#1e293b',padding:'6px 16px',textAlign:'center',fontSize:10,fontWeight:800,color:'#fbbf24',borderBottom:'1px solid #334155'}}>
+                    🔒 {DAY_NAMES[monteurUnlockedDayIndex]} ist aktuell offen — markiere alle Aufträge (erledigt/blockiert), um {monteurUnlockedDayIndex<5?DAY_NAMES[monteurUnlockedDayIndex+1]:'die Woche abzuschliessen'}.
+                </div>
+            )}
 
             {isAnyActionMode&&isAdminAccess&&(
                 <div style={{background:copyEntry?'#f59e0b':'#a78bfa',padding:'8px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:10,fontWeight:900,color:'#fff'}}>
@@ -2862,7 +2926,7 @@ function AdminPanel({ teams, onLogout, onSelectTeam, onOpenStandby, onSearch }) 
             <div className="admin-header" style={{padding:isMobile?'10px 12px':'16px 32px',display:'flex',flexDirection:isMobile?'column':'row',alignItems:isMobile?'stretch':'center',gap:isMobile?10:0,justifyContent:'space-between',position:'sticky',top:0,zIndex:40}}>
                 <div style={{display:'flex',alignItems:'center',gap:isMobile?10:14}}>
                     <div style={{width:isMobile?34:44,height:isMobile?34:44,flexShrink:0,background:'linear-gradient(135deg,#3b82f6,#6366f1)',borderRadius:isMobile?10:14,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 14px rgba(59,130,246,0.35)'}}><Icon name="calendar" size={isMobile?16:22} className="text-white"/></div>
-                    <div><div style={{color:'#1e293b',fontSize:isMobile?14:18,fontWeight:900,letterSpacing:-0.5}}>PE-MONTAGE</div><div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><div style={{color:'#64748b',fontSize:isMobile?8:9,fontWeight:700,textTransform:'uppercase',letterSpacing:2}}>Admin · {teams.length} Gruppen</div><span className="live-badge" style={{background:'rgba(16,185,129,0.1)',color:'#059669',border:'1px solid rgba(16,185,129,0.25)'}}><span className="live-dot" style={{background:'#059669'}}></span>{window.FirebaseReady?'🔥 Firestore Live':'Lokal'}</span></div></div>
+                    <div><div style={{color:'#1e293b',fontSize:isMobile?14:18,fontWeight:900,letterSpacing:-0.5}}>FROH-TECH</div><div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><div style={{color:'#64748b',fontSize:isMobile?8:9,fontWeight:700,textTransform:'uppercase',letterSpacing:2}}>Admin · {teams.length} Gruppen</div><span className="live-badge" style={{background:'rgba(16,185,129,0.1)',color:'#059669',border:'1px solid rgba(16,185,129,0.25)'}}><span className="live-dot" style={{background:'#059669'}}></span>{window.FirebaseReady?'🔥 Firestore Live':'Lokal'}</span></div></div>
                 </div>
                 <div style={{display:'flex',gap:isMobile?6:10,alignItems:'center',flexWrap:'wrap'}}>
                     <button onClick={onSearch} style={{background:'linear-gradient(135deg,#1e293b,#334155)',border:'1px solid #475569',borderRadius:isMobile?9:12,padding:isMobile?'7px 10px':'9px 18px',color:'#94a3b8',fontSize:isMobile?9:10,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:5,flex:isMobile?'1 1 auto':'none',justifyContent:'center'}}><Icon name="search" size={isMobile?11:14}/>🔍 Suche</button>
@@ -3761,14 +3825,15 @@ function App() {
     if(authState.role==='admin'){
         if(authState.showStandby)return <><StandbyView onBack={()=>setAuthState(prev=>({...prev,showStandby:false}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
         if(authState.showSearch)return <><GlobalSearchModal teams={teams} onClose={()=>setAuthState(prev=>({...prev,showSearch:false}))} onNavigate={(entry,team)=>{setAuthState(prev=>({...prev,showSearch:false,adminViewingTeam:team,adminCalType:entry.calType||'montage',scrollToEntry:entry}));}}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
-        if(authState.adminViewingTeam)return <><CalendarView key={authState.scrollToEntry?.id||authState.adminViewingTeam} team={authState.adminViewingTeam} teams={teams} isAdminAccess={true} activeCalType={authState.adminCalType||'montage'} scrollToEntry={authState.scrollToEntry||null} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(prev=>({...prev,adminViewingTeam:null,adminCalType:null,scrollToEntry:null}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
+        if(authState.adminViewingTeam)return <><CalendarView key={authState.scrollToEntry?.id||authState.adminViewingTeam} team={authState.adminViewingTeam.id==='froh-tech-montage'?{...authState.adminViewingTeam,id:'froh-tech'}:authState.adminViewingTeam} isMontageFilterTeam={authState.adminViewingTeam.id==='froh-tech-montage'} teams={teams} isAdminAccess={true} activeCalType={authState.adminCalType||'montage'} scrollToEntry={authState.scrollToEntry||null} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(prev=>({...prev,adminViewingTeam:null,adminCalType:null,scrollToEntry:null}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
         return <><AdminPanel teams={teams} onLogout={()=>setAuthState(null)} onSelectTeam={(team,calType)=>setAuthState(prev=>({...prev,adminViewingTeam:team,adminCalType:calType,scrollToEntry:null}))} onOpenStandby={()=>setAuthState(prev=>({...prev,showStandby:true}))} onSearch={()=>setAuthState(prev=>({...prev,showSearch:true}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
     }
 
     const team=authState.team;
     const teamTypes=parseCalTypes(team.calType);
     const defaultType=authState.activeCalType||teamTypes[0]||'montage';
-    return <CalendarView key={voiceJumpTarget?.id||'main'} team={team} isAdminAccess={false} activeCalType={defaultType} scrollToEntry={voiceJumpTarget} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(null)}/>;
+    const dataTeam = team.id==='froh-tech-montage' ? {...team,id:'froh-tech'} : team;
+    return <CalendarView key={voiceJumpTarget?.id||'main'} team={dataTeam} isMontageFilterTeam={team.id==='froh-tech-montage'} isAdminAccess={false} activeCalType={defaultType} scrollToEntry={voiceJumpTarget} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(null)}/>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
