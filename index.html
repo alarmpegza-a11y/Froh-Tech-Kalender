@@ -209,6 +209,7 @@
 
         .search-highlight { outline: 3px solid #f59e0b !important; outline-offset: 2px; animation: searchPulse 1.5s ease-in-out 3; }
         @keyframes searchPulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.5);} 50%{box-shadow:0 0 0 8px rgba(245,158,11,0);} }
+        @keyframes pulse-abnahme { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.55);} 50%{box-shadow:0 0 0 7px rgba(239,68,68,0);} }
 
         .ai-import-overlay { position:fixed; inset:0; z-index:70; background:rgba(15,23,42,0.99); display:flex; flex-direction:column; }
         .ai-loading-spinner { width:40px; height:40px; border:3px solid #1e293b; border-top-color:#3b82f6; border-radius:50%; animation:spin 0.8s linear infinite; }
@@ -268,6 +269,74 @@
 const { useState, useEffect, useMemo, useRef, memo, useCallback } = React;
 
 const ADMIN_PIN = "8852";
+
+// ============================================================
+// ÜBERSETZUNGSSYSTEM FÜR DEN MONTEUR-BEREICH (DE/IT/SQ/CS/BG)
+// ============================================================
+const MONTEUR_LANGS = [
+    {code:'de', flag:'🇩🇪', label:'Deutsch'},
+    {code:'it', flag:'🇮🇹', label:'Italiano'},
+    {code:'sq', flag:'🇦🇱', label:'Shqip'},
+    {code:'cs', flag:'🇨🇿', label:'Čeština'},
+    {code:'bg', flag:'🇧🇬', label:'Български'},
+];
+const MONTEUR_I18N = {
+    back: {de:'‹ Zurück', it:'‹ Indietro', sq:'‹ Prapa', cs:'‹ Zpět', bg:'‹ Назад'},
+    whoAreYou: {de:'Wer bist du?', it:'Chi sei?', sq:'Kush je?', cs:'Kdo jsi?', bg:'Кой си ти?'},
+    chooseNamePrompt: {de:'Wähle deinen Namen, um deine Aufträge zu sehen.', it:'Scegli il tuo nome per vedere i tuoi lavori.', sq:'Zgjidh emrin tënd për të parë punët e tua.', cs:'Vyber si své jméno, abys viděl své zakázky.', bg:'Изберете името си, за да видите вашите задачи.'},
+    noMonteurs: {de:'Noch keine Monteure erfasst.', it:'Ancora nessun montatore registrato.', sq:'Ende nuk ka montues të regjistruar.', cs:'Zatím nejsou zaregistrováni žádní montéři.', bg:'Все още няма регистрирани монтьори.'},
+    myJobs: {de:'Meine Aufträge', it:'I miei lavori', sq:'Punët e mia', cs:'Moje zakázky', bg:'Моите задачи'},
+    switchName: {de:'Wechseln', it:'Cambia', sq:'Ndrysho', cs:'Změnit', bg:'Смяна'},
+    noJobs: {de:'Keine Aufträge offen — gut gemacht!', it:'Nessun lavoro aperto — ben fatto!', sq:'Asnjë punë e hapur — të lumtë!', cs:'Žádné otevřené zakázky — dobrá práce!', bg:'Няма отворени задачи — браво!'},
+    elementsInstalled: {de:'montiert', it:'montato', sq:'montuar', cs:'namontováno', bg:'монтирано'},
+    dayLocked: {de:'ist aktuell offen — markiere alle Aufträge (erledigt/blockiert), um', de2:'freizuschalten.', it:'è attualmente aperto — segna tutti i lavori (fatto/bloccato) per sbloccare', it2:'.', sq:'është aktualisht i hapur — shëno të gjitha punët (kryer/bllokuar) për të hapur', sq2:'.', cs:'je aktuálně otevřený — označ všechny zakázky (hotovo/blokováno) pro odemčení', cs2:'.', bg:'е отворен в момента — маркирайте всички задачи (готово/блокирано), за да отключите', bg2:'.'},
+    orderNr: {de:'Auftragsnr.', it:'N. ordine', sq:'Nr. porosisë', cs:'Č. zakázky', bg:'№ поръчка'},
+    finishRemaining: {de:'✓ Fertig — restliche {n} {unit} montiert', it:'✓ Fatto — montati i restanti {n} {unit}', sq:'✓ Përfunduar — u montuan {n} {unit} e mbetura', cs:'✓ Hotovo — zbývajících {n} {unit} namontováno', bg:'✓ Готово — монтирани останалите {n} {unit}'},
+    enterQty: {de:'# Anzahl Elemente eingeben', it:'# Inserisci numero di elementi', sq:'# Vendos numrin e elementeve', cs:'# Zadat počet prvků', bg:'# Въведете брой елементи'},
+    blockedBtn: {de:'⚠ Blockiert', it:'⚠ Bloccato', sq:'⚠ I bllokuar', cs:'⚠ Blokováno', bg:'⚠ Блокирано'},
+    cancel: {de:'Abbrechen', it:'Annulla', sq:'Anulo', cs:'Zrušit', bg:'Отказ'},
+    qtyTodayLabel: {de:'Anzahl montiert (heute)', it:'Numero montato (oggi)', sq:'Numri i montuar (sot)', cs:'Počet namontováno (dnes)', bg:'Брой монтирани (днес)'},
+    zusatzLabel: {de:'Zusatz — mehr als im Auftrag vorgesehen (löst Mehrpreis-Vorschlag aus)', it:'Extra — più di quanto previsto in questo ordine (genera una proposta di sovrapprezzo)', sq:'Shtesë — më shumë se sa parashikuar në porosi (krijon një propozim çmimi shtesë)', cs:'Navíc — více, než bylo v zakázce plánováno (vyvolá návrh příplatku)', bg:'Допълнително — повече от предвиденото в поръчката (генерира предложение за доплащане)'},
+    save: {de:'Speichern', it:'Salva', sq:'Ruaj', cs:'Uložit', bg:'Запази'},
+    whatsProblem: {de:'Was ist das Problem?', it:'Qual è il problema?', sq:'Cili është problemi?', cs:'Jaký je problém?', bg:'Какъв е проблемът?'},
+    reportBlocked: {de:'Als blockiert melden', it:'Segnala come bloccato', sq:'Raporto si i bllokuar', cs:'Nahlásit jako blokováno', bg:'Докладвай като блокирано'},
+    yourHoursToday: {de:'⏱ Deine Stunden heute', it:'⏱ Le tue ore di oggi', sq:'⏱ Orët e tua sot', cs:'⏱ Tvoje hodiny dnes', bg:'⏱ Вашите часове днес'},
+    pleaseEnterHours: {de:'Bitte trage deine Arbeitsstunden für diesen Auftrag ein.', it:'Inserisci le tue ore di lavoro per questo ordine.', sq:'Ju lutem shënoni orët tuaja të punës për këtë porosi.', cs:'Zadej prosím své pracovní hodiny pro tuto zakázku.', bg:'Моля, въведете работните си часове за тази поръчка.'},
+    saveHours: {de:'✓ Stunden speichern', it:'✓ Salva ore', sq:'✓ Ruaj orët', cs:'✓ Uložit hodiny', bg:'✓ Запази часовете'},
+    memo: {de:'Memo', it:'Nota', sq:'Shënim', cs:'Poznámka', bg:'Бележка'},
+    openMaps: {de:'📍 In Karten öffnen', it:'📍 Apri in Mappe', sq:'📍 Hap në Harta', cs:'📍 Otevřít v mapách', bg:'📍 Отвори в картата'},
+    dayMon: {de:'Mo', it:'Lu', sq:'Hën', cs:'Po', bg:'Пн'},
+    dayTue: {de:'Di', it:'Ma', sq:'Mar', cs:'Út', bg:'Вт'},
+    dayWed: {de:'Mi', it:'Me', sq:'Mër', cs:'St', bg:'Ср'},
+    dayThu: {de:'Do', it:'Gi', sq:'Enj', cs:'Čt', bg:'Чт'},
+    dayFri: {de:'Fr', it:'Ve', sq:'Pre', cs:'Pá', bg:'Пт'},
+    daySat: {de:'Sa', it:'Sa', sq:'Sht', cs:'So', bg:'Сб'},
+};
+function mt(lang, key, vars){
+    const entry = MONTEUR_I18N[key];
+    if(!entry) return key;
+    let s = entry[lang] || entry.de || key;
+    if(vars) Object.keys(vars).forEach(k=>{ s = s.split('{'+k+'}').join(vars[k]); });
+    return s;
+}
+let _frohLang = (typeof localStorage!=='undefined' && localStorage.getItem('froh_kal_lang')) || 'de';
+const _frohLangListeners = new Set();
+function setFrohLang(l){ _frohLang = l; try{localStorage.setItem('froh_kal_lang', l);}catch(e){} _frohLangListeners.forEach(fn=>fn(l)); }
+function useFrohLang(){
+    const [lang, setLang] = useState(_frohLang);
+    useEffect(()=>{ const fn=(l)=>setLang(l); _frohLangListeners.add(fn); return ()=>_frohLangListeners.delete(fn); },[]);
+    return [lang, setFrohLang];
+}
+function LangSwitcher({lang, onChange}){
+    return (
+        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+            {MONTEUR_LANGS.map(l=>(
+                <button key={l.code} onClick={()=>onChange(l.code)} title={l.label}
+                    style={{width:32,height:32,borderRadius:8,border:lang===l.code?'2px solid #3b82f6':'1px solid #334155',background:lang===l.code?'rgba(59,130,246,0.15)':'#1e293b',fontSize:15,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>{l.flag}</button>
+            ))}
+        </div>
+    );
+}
 
 const CARD_COLORS = ['#cfe2ff','#d1e7dd','#f8d7da','#e2d9f3','#d0f4de','#fce4ec','#e8f5e9','#e3f2fd','#f3e5f5','#e0f7fa','#fde8d8','#d4edda'];
 const CARD_BORDER = ['#0d6efd','#198754','#dc3545','#6f42c1','#20c997','#e91e63','#4caf50','#2196f3','#9c27b0','#00bcd4','#f97316','#28a745'];
@@ -786,13 +855,15 @@ function HoursModal({ entry, team, monteurName, onSaved }) {
 // ANZAHL-MODAL — Elemente-Erfassung mit Summierung über mehrere
 // Monteure + Zusatz-Kennzeichnung (Froh-Tech-Erweiterung)
 // ============================================================
-function QtyModal({ entry, team, monteurName, onClose, onSaved }) {
+function QtyModal({ entry, team, monteurName, lang, onClose, onSaved }) {
+    lang = lang || 'de';
     const [qty, setQty] = useState('');
     const [isZusatz, setIsZusatz] = useState(false);
     const [saving, setSaving] = useState(false);
     const target = parseInt(entry.target)||0;
     const installed = parseInt(entry.installedQty)||0;
     const remaining = Math.max(0, target - installed);
+    const unit = 'ELE';
 
     const commit = async (qtyVal, zusatz) => {
         setSaving(true);
@@ -810,46 +881,405 @@ function QtyModal({ entry, team, monteurName, onClose, onSaved }) {
     };
 
     return (
-        <div className="blocked-overlay" style={{padding:0}}>
-            <div style={{background:'linear-gradient(135deg,#001529,#00253f)',padding:'16px 20px',borderBottom:'2px solid rgba(59,130,246,0.35)',flexShrink:0}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        <div style={{width:36,height:36,borderRadius:10,background:'rgba(59,130,246,0.2)',border:'1.5px solid #3b82f6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>#</div>
-                        <div>
-                            <div style={{color:'#3b82f6',fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:2}}>ANZAHL MONTIERT</div>
-                            <div style={{color:'#fff',fontSize:13,fontWeight:900,textTransform:'uppercase',marginTop:1}}>{entry.customer}</div>
+        <div style={{position:'fixed',inset:0,zIndex:80,background:'rgba(2,6,15,0.75)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={onClose}>
+            <div onClick={e=>e.stopPropagation()} style={{background:'#182335',borderRadius:'18px 18px 0 0',maxHeight:'85vh',overflowY:'auto',boxShadow:'0 -4px 24px rgba(0,0,0,.5)',paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>
+                <div style={{width:36,height:4,background:'#334155',borderRadius:2,margin:'10px auto 4px'}}></div>
+                <div style={{padding:'10px 18px 18px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                        <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+                            <div style={{width:32,height:32,borderRadius:9,background:'rgba(59,130,246,0.18)',border:'1.5px solid #3b82f6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,flex:'0 0 auto'}}>#</div>
+                            <div style={{minWidth:0}}>
+                                <div style={{color:'#3b82f6',fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:1.5}}>{mt(lang,'enterQty')}</div>
+                                <div style={{color:'#fff',fontSize:13,fontWeight:800,marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{entry.customer}</div>
+                            </div>
                         </div>
+                        <button onClick={onClose} style={{background:'rgba(255,255,255,0.08)',border:'none',borderRadius:9,width:30,height:30,cursor:'pointer',color:'#94a3b8',fontSize:14,flex:'0 0 auto'}}>✕</button>
                     </div>
-                    <button onClick={onClose} style={{background:'rgba(255,255,255,0.08)',border:'none',borderRadius:10,width:34,height:34,cursor:'pointer',color:'#94a3b8',fontSize:16}}>✕</button>
+                    {target>0 && <div style={{color:'#93c5fd',fontSize:11.5,fontWeight:700,marginBottom:10}}>{installed}/{target} {unit}</div>}
+                    {target>0 && remaining>0 && (
+                        <button onClick={()=>commit(remaining,false)} disabled={saving} style={{width:'100%',padding:12,background:'rgba(16,185,129,0.14)',border:'1px solid #10b981',borderRadius:11,color:'#4ade80',fontWeight:800,fontSize:12,cursor:'pointer',marginBottom:12}}>{mt(lang,'finishRemaining',{n:remaining,unit})}</button>
+                    )}
+                    <div style={{color:'#3b82f6',fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>{mt(lang,'qtyTodayLabel')}</div>
+                    <input type="number" autoFocus inputMode="numeric" value={qty} onChange={e=>setQty(e.target.value)} placeholder="5"
+                        style={{width:'100%',background:'#0d1420',border:'2px solid rgba(59,130,246,0.35)',borderRadius:12,padding:'13px 14px',color:'#dbeafe',fontSize:17,fontWeight:700,boxSizing:'border-box',outline:'none',marginBottom:12}}/>
+                    <label style={{display:'flex',alignItems:'flex-start',gap:8,color:'#93c5fd',fontSize:11,fontWeight:600,cursor:'pointer',marginBottom:14}}>
+                        <input type="checkbox" checked={isZusatz} onChange={e=>setIsZusatz(e.target.checked)} style={{width:16,height:16,marginTop:1,flex:'0 0 auto'}}/>
+                        <span>{mt(lang,'zusatzLabel')}</span>
+                    </label>
+                    <button onClick={()=>qty&&commit(parseFloat(qty),isZusatz)} disabled={saving || !qty}
+                        style={{width:'100%',padding:14,background:qty&&!saving?'#3b82f6':'#263042',border:'none',borderRadius:12,color:qty&&!saving?'#fff':'#475569',fontWeight:900,fontSize:12.5,cursor:qty&&!saving?'pointer':'not-allowed'}}>
+                        {mt(lang,'save')}
+                    </button>
                 </div>
-            </div>
-            <div style={{flex:1,overflowY:'auto',padding:'16px 20px',display:'flex',flexDirection:'column',gap:14}}>
-                <div style={{color:'#93c5fd',fontSize:12,fontWeight:800}}>{target>0 ? `${installed}/${target} ELE montiert — noch ${remaining} offen` : 'Keine Stückzahl im Auftrag erfasst'}</div>
-                {target>0 && remaining>0 && (
-                    <button onClick={()=>commit(remaining,false)} disabled={saving} style={{width:'100%',padding:'14px',background:'rgba(16,185,129,0.15)',border:'1px solid #10b981',borderRadius:12,color:'#10b981',fontWeight:900,fontSize:12,textTransform:'uppercase',cursor:'pointer'}}>✓ Fertig — restliche {remaining} ELE montiert</button>
-                )}
-                <div>
-                    <div style={{color:'#3b82f6',fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>Anzahl heute montiert</div>
-                    <input type="number" autoFocus value={qty} onChange={e=>setQty(e.target.value)} placeholder="z.B. 5"
-                        style={{width:'100%',background:'#001022',border:'2px solid rgba(59,130,246,0.4)',borderRadius:12,padding:'12px 14px',color:'#dbeafe',fontSize:16,fontWeight:700,boxSizing:'border-box',outline:'none'}}/>
-                </div>
-                <label style={{display:'flex',alignItems:'center',gap:8,color:'#93c5fd',fontSize:11,fontWeight:700,cursor:'pointer'}}>
-                    <input type="checkbox" checked={isZusatz} onChange={e=>setIsZusatz(e.target.checked)} style={{width:16,height:16}}/>
-                    Zusatz — mehr als im Auftrag vorgesehen (löst Mehrpreis-Vorschlag aus)
-                </label>
-            </div>
-            <div style={{padding:'12px 20px',borderTop:'1px solid rgba(59,130,246,0.2)',background:'#0f172a',flexShrink:0}}>
-                <button onClick={()=>qty&&commit(parseFloat(qty),isZusatz)} disabled={saving || !qty}
-                    style={{width:'100%',padding:'14px',background:qty&&!saving?'#3b82f6':'#1e293b',border:'none',borderRadius:14,color:qty&&!saving?'#fff':'#475569',fontWeight:900,fontSize:11,textTransform:'uppercase',cursor:qty&&!saving?'pointer':'not-allowed'}}>
-                    {saving ? '⏳ Speichern...' : '✓ Speichern'}
-                </button>
             </div>
         </div>
     );
 }
 
 // ============================================================
-// MONTEURE ZUTEILEN — für "Froh-Tech Montage" (Froh-Tech-Erweiterung)
+// MONTEUR-AUFTRAGS-BLATT — einfache, übersetzte Aktions-Auswahl
+// für die Listenansicht (Fertig / Anzahl / Blockiert + Stunden)
+// ============================================================
+function MonteurJobSheet({ job, monteurName, team, lang, onClose }){
+    const [mode, setMode] = useState(null); // null | 'qty' | 'blocked' | 'hours'
+    const [blockedText, setBlockedText] = useState('');
+    const [hours, setHours] = useState('');
+    const [saving, setSaving] = useState(false);
+    const target = parseInt(job.target)||0;
+    const installed = parseInt(job.installedQty)||0;
+    const remaining = Math.max(0, target-installed);
+
+    const saveHours = async () => {
+        if(!hours) return;
+        setSaving(true);
+        const { db, doc, setDoc } = window.FirebaseSDK;
+        const id = `h-${genId()}`;
+        await setDoc(doc(db, `hours_${team.id}`, id), { id, entryId: job.id, customer: job.customer, monteur: monteurName||'', hours: parseFloat(hours)||0, date: new Date().toISOString() });
+        setSaving(false);
+        onClose();
+    };
+    const markDoneFull = async () => {
+        setSaving(true);
+        const { db, doc, updateDoc } = window.FirebaseSDK;
+        const log = [...(job.progressLog||[]), { monteur: monteurName||'', qty: remaining, isZusatz:false, date: new Date().toISOString() }];
+        await updateDoc(doc(db, `teams_cal_${team.id}`, job.id), { installedQty: installed+remaining, progressLog: log, isDone:true, doneAt:new Date().toISOString() });
+        setSaving(false);
+        setMode('hours');
+    };
+    const saveBlocked = async () => {
+        if(!blockedText) return;
+        setSaving(true);
+        const { db, doc, updateDoc } = window.FirebaseSDK;
+        await updateDoc(doc(db, `teams_cal_${team.id}`, job.id), { isBlocked:true, blockReason:blockedText, blockedAt:new Date().toISOString() });
+        setSaving(false);
+        setMode('hours');
+    };
+
+    if(mode==='qty'){
+        return <QtyModal entry={job} team={team} monteurName={monteurName} lang={lang} onClose={()=>setMode(null)} onSaved={()=>setMode('hours')}/>;
+    }
+
+    // ── Gemeinsame Bottom-Sheet-Hülle: dunkler, abdunkelnder Hintergrund + solide, kompakte Karte unten ──
+    const Sheet = ({children}) => (
+        <div style={{position:'fixed',inset:0,zIndex:80,background:'rgba(2,6,15,0.75)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={onClose}>
+            <div onClick={e=>e.stopPropagation()} style={{background:'#182335',borderRadius:'18px 18px 0 0',maxHeight:'82vh',overflowY:'auto',boxShadow:'0 -4px 24px rgba(0,0,0,.5)',paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>
+                <div style={{width:36,height:4,background:'#334155',borderRadius:2,margin:'10px auto 4px'}}></div>
+                {children}
+            </div>
+        </div>
+    );
+
+    if(mode==='hours'){
+        return (
+            <Sheet>
+                <div style={{padding:'10px 18px 18px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+                        <div style={{width:32,height:32,borderRadius:9,background:'rgba(16,185,129,0.18)',border:'1.5px solid #10b981',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,flex:'0 0 auto'}}>⏱</div>
+                        <div style={{minWidth:0}}>
+                            <div style={{color:'#10b981',fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:1.5}}>{mt(lang,'yourHoursToday')}</div>
+                            <div style={{color:'#fff',fontSize:13,fontWeight:800,marginTop:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{job.customer}</div>
+                        </div>
+                    </div>
+                    <div style={{color:'#6ee7b7',fontSize:11.5,fontWeight:600,marginBottom:8}}>{mt(lang,'pleaseEnterHours')}</div>
+                    <input type="number" step="0.25" autoFocus value={hours} onChange={e=>setHours(e.target.value)} placeholder="8.5" inputMode="decimal"
+                        style={{width:'100%',background:'#0d1420',border:'2px solid rgba(16,185,129,0.35)',borderRadius:12,padding:'13px 14px',color:'#d1fae5',fontSize:17,fontWeight:700,boxSizing:'border-box',outline:'none',marginBottom:12}}/>
+                    <button onClick={saveHours} disabled={saving||!hours}
+                        style={{width:'100%',padding:14,background:hours&&!saving?'#10b981':'#263042',border:'none',borderRadius:12,color:hours&&!saving?'#04150f':'#475569',fontWeight:900,fontSize:12.5,cursor:hours&&!saving?'pointer':'not-allowed'}}>
+                        {mt(lang,'saveHours')}
+                    </button>
+                </div>
+            </Sheet>
+        );
+    }
+    if(mode==='blocked'){
+        return (
+            <Sheet>
+                <div style={{padding:'10px 18px 18px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+                        <div style={{width:32,height:32,borderRadius:9,background:'rgba(249,115,22,0.18)',border:'1.5px solid #f97316',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,flex:'0 0 auto'}}>⚠</div>
+                        <div style={{color:'#fff',fontSize:13,fontWeight:800,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{job.customer}</div>
+                    </div>
+                    <div style={{color:'#fdba74',fontSize:11.5,fontWeight:600,marginBottom:8}}>{mt(lang,'whatsProblem')}</div>
+                    <textarea autoFocus rows={3} value={blockedText} onChange={e=>setBlockedText(e.target.value)}
+                        style={{width:'100%',background:'#0d1420',border:'2px solid rgba(249,115,22,0.35)',borderRadius:12,padding:'12px 14px',color:'#fed7aa',fontSize:14,boxSizing:'border-box',outline:'none',resize:'vertical',marginBottom:12}}/>
+                    <button onClick={saveBlocked} disabled={saving||!blockedText}
+                        style={{width:'100%',padding:14,background:blockedText&&!saving?'#f97316':'#263042',border:'none',borderRadius:12,color:blockedText&&!saving?'#fff':'#475569',fontWeight:900,fontSize:12.5,cursor:blockedText&&!saving?'pointer':'not-allowed'}}>
+                        {mt(lang,'reportBlocked')}
+                    </button>
+                </div>
+            </Sheet>
+        );
+    }
+    return (
+        <Sheet>
+            <div style={{padding:'10px 18px 18px'}}>
+                <div style={{color:'#fff',fontSize:15,fontWeight:800,marginBottom:2}}>{job.customer}</div>
+                <div style={{color:'#64748b',fontSize:11.5,marginBottom:14}}>{job.address}</div>
+                {target>0 && remaining>0 && (
+                    <button onClick={markDoneFull} disabled={saving} style={{width:'100%',textAlign:'left',padding:'12px 14px',borderRadius:11,fontWeight:700,fontSize:13,cursor:'pointer',border:'1px solid #16a34a',background:'rgba(22,163,74,0.14)',color:'#4ade80',marginBottom:8}}>{mt(lang,'finishRemaining',{n:remaining,unit:'ELE'})}</button>
+                )}
+                <button onClick={()=>setMode('qty')} style={{width:'100%',textAlign:'left',padding:'12px 14px',borderRadius:11,fontWeight:700,fontSize:13,cursor:'pointer',border:'1px solid #3b82f6',background:'rgba(59,130,246,0.14)',color:'#93c5fd',marginBottom:8}}>{mt(lang,'enterQty')}</button>
+                <button onClick={()=>setMode('blocked')} style={{width:'100%',textAlign:'left',padding:'12px 14px',borderRadius:11,fontWeight:700,fontSize:13,cursor:'pointer',border:'1px solid #f97316',background:'rgba(249,115,22,0.14)',color:'#fdba74',marginBottom:8}}>{mt(lang,'blockedBtn')}</button>
+                <button onClick={onClose} style={{width:'100%',textAlign:'center',padding:11,borderRadius:11,fontWeight:600,fontSize:12.5,cursor:'pointer',border:'1px solid #334155',background:'none',color:'#94a3b8'}}>{mt(lang,'cancel')}</button>
+            </div>
+        </Sheet>
+    );
+}
+
+// ============================================================
+// UNTERSCHRIFT — eigenes Vollbild-Fenster mit Touch-Canvas, für die
+// Abnahmeprotokoll-Unterzeichnung (Froh-Tech-Erweiterung)
+// ============================================================
+function SignaturePad({ title, subtitle, onDone, onBack }){
+    const canvasRef = useRef(null);
+    const [hasDrawn, setHasDrawn] = useState(false);
+    const [ready, setReady] = useState(false);
+    const drawing = useRef(false);
+    const lastPos = useRef({x:0,y:0});
+
+    useEffect(()=>{
+        const canvas = canvasRef.current;
+        if(!canvas) return;
+        let cancelled = false;
+        // Canvas-Grösse wird erst gesetzt, sobald das Flex-Layout tatsächlich eine Fläche > 0 hat —
+        // direkt nach einem Bildschirmwechsel (z.B. Formular -> Unterschrift) kann das erste Frame
+        // sonst noch 0×0 liefern, was zu einer leeren/nicht funktionierenden Unterschrift führen würde.
+        const setupCanvas = ()=>{
+            const rect = canvas.getBoundingClientRect();
+            if(rect.width<10 || rect.height<10){
+                if(!cancelled) requestAnimationFrame(setupCanvas);
+                return;
+            }
+            const dpr = Math.max(2, window.devicePixelRatio||2);
+            canvas.width = Math.round(rect.width * dpr);
+            canvas.height = Math.round(rect.height * dpr);
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#111827';
+            if(!cancelled) setReady(true);
+        };
+        requestAnimationFrame(setupCanvas);
+        return ()=>{ cancelled = true; };
+    }, []);
+
+    const getPos = (e)=>{
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    };
+    const start = (e)=>{ if(!ready) return; e.preventDefault(); drawing.current = true; lastPos.current = getPos(e); setHasDrawn(true); };
+    const move = (e)=>{
+        if(!drawing.current) return;
+        e.preventDefault();
+        const ctx = canvasRef.current.getContext('2d');
+        const pos = getPos(e);
+        ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+        lastPos.current = pos;
+    };
+    const end = ()=>{ drawing.current = false; };
+    const clear = ()=>{
+        const canvas = canvasRef.current;
+        canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+        setHasDrawn(false);
+    };
+    const finish = ()=>{
+        if(!hasDrawn) return;
+        const dataUrl = canvasRef.current.toDataURL('image/png');
+        if(dataUrl.length < 1000){
+            // Auffällig kurze Daten-URL deutet auf eine leere/fehlerhafte Aufnahme hin (z.B. 0×0-Canvas) —
+            // lieber nochmals zeichnen lassen, als eine unsichtbare Unterschrift zu speichern.
+            alert('Die Unterschrift konnte nicht richtig erfasst werden. Bitte nochmals zeichnen.');
+            clear();
+            return;
+        }
+        onDone(dataUrl);
+    };
+
+    return (
+        <div style={{position:'fixed',inset:0,zIndex:95,background:'#0f172a',display:'flex',flexDirection:'column'}}>
+            <div style={{padding:'16px 18px',borderBottom:'1px solid rgba(255,255,255,0.08)',flexShrink:0}}>
+                <div style={{color:'#fff',fontSize:15,fontWeight:900}}>✍️ {title}</div>
+                {subtitle && <div style={{color:'#94a3b8',fontSize:12,marginTop:3}}>{subtitle}</div>}
+            </div>
+            <div style={{flex:1,position:'relative',background:'#fff',margin:'14px 18px',borderRadius:14,overflow:'hidden',border:'2px solid #334155'}}>
+                <canvas ref={canvasRef}
+                    onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+                    onTouchStart={start} onTouchMove={move} onTouchEnd={end}
+                    style={{width:'100%',height:'100%',touchAction:'none',display:'block'}}/>
+                {!hasDrawn && <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',color:'#cbd5e1',fontSize:13,fontWeight:700,pointerEvents:'none'}}>Hier mit dem Finger unterschreiben</div>}
+            </div>
+            <div style={{padding:'14px 18px',display:'flex',gap:10,flexShrink:0,paddingBottom:'calc(14px + env(safe-area-inset-bottom, 0px))'}}>
+                {onBack && <button onClick={onBack} style={{padding:'14px 16px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:14,color:'#64748b',fontWeight:900,fontSize:11,textTransform:'uppercase',cursor:'pointer'}}>Zurück</button>}
+                <button onClick={clear} style={{padding:'14px 16px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:14,color:'#64748b',fontWeight:900,fontSize:11,textTransform:'uppercase',cursor:'pointer'}}>Löschen</button>
+                <button onClick={finish} disabled={!hasDrawn} style={{flex:1,padding:'14px',background:hasDrawn?'#10b981':'#1e293b',border:'none',borderRadius:14,color:hasDrawn?'#fff':'#475569',fontWeight:900,fontSize:11,textTransform:'uppercase',cursor:hasDrawn?'pointer':'not-allowed'}}>✓ Übernehmen</button>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================
+// ABNAHMEPROTOKOLL — vollständiges digitales Protokoll (Vorwandsysteme),
+// inkl. Checkliste, Mängeltabelle und zwei Touch-Unterschriften.
+// Wird nach Objekt/Auftrag im Webtool abgelegt (Firestore: abnahmeprotokolle).
+// (Froh-Tech-Erweiterung)
+// ============================================================
+const ABNAHME_PRUEFPUNKTE = [
+    'Raummasse laut Detailplan eingehalten',
+    'Vorwände im Blei erstellt',
+    'Befestigungsabstände laut Hersteller eingehalten',
+    'Vorwände im Winkel',
+    'Alle relevanten Höhen eingehalten (Anschlüsse, Nischen etc.)',
+    'Montagewinkel vom Bauwerk entkoppelt',
+    'Kein direkter Kontakt vom Vorwandsystem zum Bauwerk',
+    'Vorwand mit Gips / Mörtel verunreinigt',
+];
+function AbnahmeModal({ job, monteurName, team, onClose }){
+    const [step, setStep] = useState('form'); // 'form' | 'sign1' | 'sign2'
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        objekt: job.customer||'', adresse: job.address||'', kunde: job.customer||'', wohnungen:'',
+        datum: new Date().toISOString().slice(0,10),
+        system: 'duofix', systemSonstiges:'',
+        checkliste: Object.fromEntries(ABNAHME_PRUEFPUNKTE.map(p=>[p,null])), // null|'ja'|'nein'
+        maengel: [{ anlageteil:'', mangel:'', vorgehen:'' }],
+        unterschriftFrohTechName: monteurName||'',
+        unterschriftPLName: '',
+    });
+    const [sig1, setSig1] = useState(null);
+    const [sig2, setSig2] = useState(null);
+
+    const setField = (k,v)=> setForm(f=>({...f,[k]:v}));
+    const setCheck = (p,v)=> setForm(f=>({...f, checkliste:{...f.checkliste, [p]:v}}));
+    const addMangelRow = ()=> setForm(f=>({...f, maengel:[...f.maengel, {anlageteil:'',mangel:'',vorgehen:''}]}));
+    const removeMangelRow = (i)=> setForm(f=>({...f, maengel: f.maengel.filter((_,idx)=>idx!==i)}));
+    const setMangelField = (i,k,v)=> setForm(f=>({...f, maengel: f.maengel.map((m,idx)=> idx===i?{...m,[k]:v}:m)}));
+
+    const allChecked = ABNAHME_PRUEFPUNKTE.every(p=> form.checkliste[p]!==null);
+
+    const finalize = async (secondSig)=>{
+        setSaving(true);
+        try{
+            const { db, doc, setDoc, updateDoc } = window.FirebaseSDK;
+            const id = `ap-${job.id}`;
+            await setDoc(doc(db, 'abnahmeprotokolle', id), {
+                id, entryId: job.id, auftragsNr: job.auftragsNr||'', team: team.id,
+                objekt: form.objekt, adresse: form.adresse, kunde: form.kunde, wohnungen: form.wohnungen,
+                datum: form.datum, system: form.system, systemSonstiges: form.systemSonstiges,
+                checkliste: form.checkliste, maengel: form.maengel.filter(m=>m.anlageteil||m.mangel||m.vorgehen),
+                unterschriftFrohTechName: form.unterschriftFrohTechName, unterschriftFrohText: sig1,
+                unterschriftPLName: form.unterschriftPLName, unterschriftPL: secondSig,
+                createdAt: new Date().toISOString(), erstelltVon: monteurName||'',
+            }, {merge:true});
+            await updateDoc(doc(db, `teams_cal_${team.id}`, job.id), { abnahmeStatus:'done', abnahmeAt:new Date().toISOString() });
+        }catch(e){ console.warn('Abnahmeprotokoll speichern fehlgeschlagen', e); alert('Speichern fehlgeschlagen — bitte nochmals versuchen.'); setSaving(false); return; }
+        setSaving(false);
+        onClose();
+    };
+
+    if(step==='sign1'){
+        return <SignaturePad key="sign1" title="Unterschrift Froh-Tech" subtitle={form.unterschriftFrohTechName||monteurName}
+            onBack={()=>setStep('form')} onDone={(dataUrl)=>{ setSig1(dataUrl); setStep('sign2'); }}/>;
+    }
+    if(step==='sign2'){
+        return <SignaturePad key="sign2" title="Unterschrift PL Sanitär / Kunde" subtitle={form.unterschriftPLName||'—'}
+            onBack={()=>setStep('sign1')} onDone={(dataUrl)=>{ setSig2(dataUrl); finalize(dataUrl); }}/>;
+    }
+
+    const inputStyle = {width:'100%',background:'#0d1420',border:'1.5px solid rgba(255,255,255,0.12)',borderRadius:10,padding:'10px 12px',color:'#e2e8f0',fontSize:13.5,boxSizing:'border-box',outline:'none'};
+    const labelStyle = {color:'#94a3b8',fontSize:10.5,fontWeight:800,textTransform:'uppercase',letterSpacing:.5,marginBottom:5,display:'block'};
+
+    return (
+        <div style={{position:'fixed',inset:0,zIndex:90,background:'rgba(2,6,15,0.85)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={onClose}>
+            <div onClick={e=>e.stopPropagation()} style={{background:'#182335',borderRadius:'18px 18px 0 0',maxHeight:'92vh',overflowY:'auto',boxShadow:'0 -4px 24px rgba(0,0,0,.5)'}}>
+                <div style={{width:36,height:4,background:'#334155',borderRadius:2,margin:'10px auto 4px'}}></div>
+                <div style={{padding:'10px 18px 4px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+                        <div style={{width:34,height:34,borderRadius:10,background:'rgba(239,68,68,0.18)',border:'1.5px solid #ef4444',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flex:'0 0 auto'}}>📋</div>
+                        <div>
+                            <div style={{color:'#f87171',fontSize:9,fontWeight:900,textTransform:'uppercase',letterSpacing:1.5}}>Abnahmeprotokoll</div>
+                            <div style={{color:'#fff',fontSize:14,fontWeight:800,marginTop:1}}>Vorwandsysteme</div>
+                        </div>
+                    </div>
+
+                    <div style={{color:'#cbd5e1',fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:.5,margin:'6px 0 8px'}}>Projekt &amp; Ansprechpartner</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+                        <div><label style={labelStyle}>Objekt</label><input style={inputStyle} value={form.objekt} onChange={e=>setField('objekt',e.target.value)}/></div>
+                        <div><label style={labelStyle}>Datum</label><input type="date" style={inputStyle} value={form.datum} onChange={e=>setField('datum',e.target.value)}/></div>
+                        <div><label style={labelStyle}>Kunde</label><input style={inputStyle} value={form.kunde} onChange={e=>setField('kunde',e.target.value)}/></div>
+                        <div><label style={labelStyle}>Wohnungen</label><input style={inputStyle} placeholder="z. B. 3.OG links, 4.OG rechts" value={form.wohnungen} onChange={e=>setField('wohnungen',e.target.value)}/></div>
+                    </div>
+                    <div style={{gridColumn:'1/-1',marginBottom:14}}>
+                        <label style={labelStyle}>Adresse</label>
+                        <input style={inputStyle} value={form.adresse} onChange={e=>setField('adresse',e.target.value)}/>
+                    </div>
+
+                    <div style={{color:'#cbd5e1',fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:.5,margin:'6px 0 8px'}}>System</div>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+                        {[['duofix','Geberit Duofix'],['gis','Geberit GIS'],['sonstiges','Sonstiges']].map(([val,lbl])=>(
+                            <button key={val} onClick={()=>setField('system',val)}
+                                style={{padding:'9px 14px',borderRadius:10,fontSize:12,fontWeight:800,cursor:'pointer',border:form.system===val?'2px solid #3b82f6':'1.5px solid rgba(255,255,255,0.12)',background:form.system===val?'rgba(59,130,246,0.18)':'#0d1420',color:form.system===val?'#93c5fd':'#94a3b8'}}>
+                                {lbl}
+                            </button>
+                        ))}
+                    </div>
+                    {form.system==='sonstiges' && (
+                        <div style={{marginBottom:14}}><input style={inputStyle} placeholder="System angeben" value={form.systemSonstiges} onChange={e=>setField('systemSonstiges',e.target.value)}/></div>
+                    )}
+
+                    <div style={{color:'#cbd5e1',fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:.5,margin:'6px 0 8px'}}>Montage &amp; Schallschutz</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:7,marginBottom:16}}>
+                        {ABNAHME_PRUEFPUNKTE.map(p=>(
+                            <div key={p} style={{display:'flex',alignItems:'center',gap:10,background:'#0d1420',borderRadius:10,padding:'9px 12px'}}>
+                                <div style={{flex:1,color:'#e2e8f0',fontSize:12.5,fontWeight:600,lineHeight:1.3}}>{p}</div>
+                                <div style={{display:'flex',gap:6,flex:'0 0 auto'}}>
+                                    <button onClick={()=>setCheck(p,'ja')} style={{width:44,padding:'7px 0',borderRadius:8,border:'none',fontWeight:900,fontSize:11.5,cursor:'pointer',background:form.checkliste[p]==='ja'?'#10b981':'#1e293b',color:form.checkliste[p]==='ja'?'#fff':'#475569'}}>Ja</button>
+                                    <button onClick={()=>setCheck(p,'nein')} style={{width:52,padding:'7px 0',borderRadius:8,border:'none',fontWeight:900,fontSize:11.5,cursor:'pointer',background:form.checkliste[p]==='nein'?'#ef4444':'#1e293b',color:form.checkliste[p]==='nein'?'#fff':'#475569'}}>Nein</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',margin:'6px 0 8px'}}>
+                        <div style={{color:'#cbd5e1',fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:.5}}>Mängel &amp; weiteres Vorgehen</div>
+                        <button onClick={addMangelRow} style={{background:'rgba(59,130,246,0.14)',border:'1px solid #3b82f6',borderRadius:8,color:'#93c5fd',fontSize:10.5,fontWeight:800,padding:'5px 10px',cursor:'pointer'}}>+ Zeile</button>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
+                        {form.maengel.map((m,i)=>(
+                            <div key={i} style={{background:'#0d1420',borderRadius:10,padding:'10px 12px',position:'relative'}}>
+                                {form.maengel.length>1 && <button onClick={()=>removeMangelRow(i)} style={{position:'absolute',top:8,right:8,background:'none',border:'none',color:'#64748b',fontSize:14,cursor:'pointer'}}>✕</button>}
+                                <input style={{...inputStyle,marginBottom:7}} placeholder="Anlageteil" value={m.anlageteil} onChange={e=>setMangelField(i,'anlageteil',e.target.value)}/>
+                                <input style={{...inputStyle,marginBottom:7}} placeholder="Mangel / Feststellung" value={m.mangel} onChange={e=>setMangelField(i,'mangel',e.target.value)}/>
+                                <input style={inputStyle} placeholder="Weiteres Vorgehen" value={m.vorgehen} onChange={e=>setMangelField(i,'vorgehen',e.target.value)}/>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{color:'#64748b',fontSize:10.5,fontStyle:'italic',marginBottom:16}}>★ Ohne Mängel gehen alle Vorwände in die Obhut des Sanitärinstallateurs über.</div>
+
+                    <div style={{color:'#cbd5e1',fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:.5,margin:'6px 0 8px'}}>Unterschriften</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:6}}>
+                        <div><label style={labelStyle}>Froh-Tech</label><input style={inputStyle} value={form.unterschriftFrohTechName} onChange={e=>setField('unterschriftFrohTechName',e.target.value)}/></div>
+                        <div><label style={labelStyle}>PL Sanitär / Kunde</label><input style={inputStyle} value={form.unterschriftPLName} onChange={e=>setField('unterschriftPLName',e.target.value)}/></div>
+                    </div>
+                </div>
+                <div style={{padding:'14px 18px',borderTop:'1px solid rgba(255,255,255,0.08)',background:'#0f172a',display:'flex',gap:10,paddingBottom:'calc(14px + env(safe-area-inset-bottom, 0px))'}}>
+                    <button onClick={onClose} style={{padding:'14px 16px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:14,color:'#64748b',fontWeight:900,fontSize:11,textTransform:'uppercase',cursor:'pointer'}}>Abbrechen</button>
+                    <button onClick={()=>setStep('sign1')} disabled={!allChecked || !form.unterschriftFrohTechName || !form.unterschriftPLName || saving}
+                        style={{flex:1,padding:'14px',background:(allChecked&&form.unterschriftFrohTechName&&form.unterschriftPLName&&!saving)?'#ef4444':'#1e293b',border:'none',borderRadius:14,color:(allChecked&&form.unterschriftFrohTechName&&form.unterschriftPLName&&!saving)?'#fff':'#475569',fontWeight:900,fontSize:11,textTransform:'uppercase',cursor:(allChecked&&form.unterschriftFrohTechName&&form.unterschriftPLName)?'pointer':'not-allowed'}}>
+                        ✍️ Weiter zur Unterschrift
+                    </button>
+                </div>
+                {!allChecked && <div style={{color:'#fca5a5',fontSize:10.5,textAlign:'center',padding:'0 18px 12px'}}>Bitte alle Prüfpunkte mit Ja/Nein beantworten.</div>}
+            </div>
+        </div>
+    );
+}
+
+
 // ============================================================
 function AssignMonteurModal({ entry, monteurs, team, onClose }) {
     const [selected, setSelected] = useState(entry.assignedMonteure||[]);
@@ -2112,6 +2542,8 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, isMontageFi
     const [qtyEntry, setQtyEntry] = useState(null);
     const [hoursQueue, setHoursQueue] = useState(null); // {entry} — wartet auf Stundenerfassung
     const [selectedMonteur, setSelectedMonteur] = useState(null);
+    const [monteurListJob, setMonteurListJob] = useState(null);
+    const [abnahmeJob, setAbnahmeJob] = useState(null);
     const [assignEntry, setAssignEntry] = useState(null);
     const isMonteurPickerTeam = isMontageFilterTeam;
 
@@ -2141,6 +2573,14 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, isMontageFi
     useEffect(()=>{const{db,collection,onSnapshot}=window.FirebaseSDK;return onSnapshot(collection(db,'standby_items'),snap=>{setStandbyItems(snap.docs.map(d=>({id:d.id,...d.data()})));});},[]);
     // ── Ferien & Monteure live laden ──
     useEffect(()=>{const{db,collection,onSnapshot}=window.FirebaseSDK;return onSnapshot(collection(db,`monteurs_${team.id}_${activeCalType}`),snap=>{setMonteurs(snap.docs.map(d=>({id:d.id,...d.data()})));});},[team.id,activeCalType]);
+    // ── Gemeinsame Monteure aus dem Webtool (Einstellungen → Team & Monteure) zusätzlich einblenden ──
+    const [sharedMonteurNames, setSharedMonteurNames] = useState([]);
+    useEffect(()=>{const{db,collection,onSnapshot}=window.FirebaseSDK;return onSnapshot(collection(db,'meta'),snap=>{
+      const d = snap.docs.find(x=>x.id==='monteure');
+      setSharedMonteurNames(d ? (d.data().list||[]).map(m=>m.name) : []);
+    });},[]);
+    const allMonteurNames = Array.from(new Set([...sharedMonteurNames, ...monteurs.map(m=>m.name)]));
+    const monteursForPicker = allMonteurNames.map(name=> monteurs.find(m=>m.name===name) || {id:'shared-'+name, name});
     useEffect(()=>{const{db,collection,onSnapshot}=window.FirebaseSDK;return onSnapshot(collection(db,`ferien_${team.id}_${activeCalType}`),snap=>{setFerien(snap.docs.map(d=>({id:d.id,...d.data()})));});},[team.id,activeCalType]);
     const ferienAmTag = (dayStr)=>ferien.filter(f=>{const s=(f.start||'').substring(0,10);const e=(f.end||f.start||'').substring(0,10);return s&&dayStr>=s&&dayStr<=e;});
     const addMonteur = async (name)=>{const n=(name||'').trim();if(!n)return;if(monteurs.some(m=>(m.name||'').toLowerCase()===n.toLowerCase())){setNewMonteurName('');return;}const{db,doc,setDoc}=window.FirebaseSDK;const id=`mon-${genId()}`;await setDoc(doc(db,`monteurs_${team.id}_${activeCalType}`,id),{id,name:n,createdAt:new Date().toISOString()});setNewMonteurName('');};
@@ -2326,21 +2766,25 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, isMontageFi
     const isAnyActionMode=!!(copyEntry||moveEntry);
 
     // ── FROH-TECH-ERWEITERUNG: Monteur wählt zuerst seinen Namen ──
+    const [frohLang, setFrohLangState] = useFrohLang();
     if(isMonteurPickerTeam && !isAdminAccess && !selectedMonteur){
         return (
             <div style={{minHeight:'100vh',background:'#0f172a',padding:'40px 20px'}}>
                 <div style={{maxWidth:440,margin:'0 auto'}}>
-                    <button onClick={onBack} style={{background:'none',border:'none',color:'#64748b',fontSize:13,marginBottom:20,cursor:'pointer'}}>‹ Zurück</button>
-                    <h1 style={{color:'#f8fafc',fontSize:20,fontWeight:900,marginBottom:6}}>Wer bist du?</h1>
-                    <p style={{color:'#64748b',fontSize:13,marginBottom:22}}>Wähle deinen Namen, um deine Aufträge zu sehen.</p>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+                        <button onClick={onBack} style={{background:'none',border:'none',color:'#64748b',fontSize:13,cursor:'pointer'}}>{mt(frohLang,'back')}</button>
+                        <LangSwitcher lang={frohLang} onChange={setFrohLangState}/>
+                    </div>
+                    <h1 style={{color:'#f8fafc',fontSize:20,fontWeight:900,marginBottom:6}}>{mt(frohLang,'whoAreYou')}</h1>
+                    <p style={{color:'#64748b',fontSize:13,marginBottom:22}}>{mt(frohLang,'chooseNamePrompt')}</p>
                     <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
                         {visibleTabs.map(ct=>{const cfg=CAL_TYPE_CONFIG[ct];return(
                             <button key={ct} onClick={()=>setActiveCalType(ct)} style={{padding:'8px 14px',borderRadius:8,fontSize:11,fontWeight:900,textTransform:'uppercase',border:'none',cursor:'pointer',background:activeCalType===ct?cfg.bg:'#1e293b',color:'#fff'}}>{cfg.label}</button>
                         );})}
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                        {monteurs.length===0 && <div style={{color:'#475569',fontSize:13}}>Noch keine Monteure für {CAL_TYPE_CONFIG[activeCalType].label} erfasst.</div>}
-                        {monteurs.map(m=>(
+                        {monteursForPicker.length===0 && <div style={{color:'#475569',fontSize:13}}>{mt(frohLang,'noMonteurs')}</div>}
+                        {monteursForPicker.map(m=>(
                             <button key={m.id} onClick={()=>setSelectedMonteur(m.name)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',borderRadius:14,background:'#1e293b',border:'1px solid #334155',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',textAlign:'left'}}>
                                 <div style={{width:38,height:38,borderRadius:'50%',background:'rgba(59,130,246,0.2)',color:'#3b82f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{m.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
                                 <span>{m.name}</span>
@@ -2348,6 +2792,102 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, isMontageFi
                         ))}
                     </div>
                 </div>
+            </div>
+        );
+    }
+
+    // ── FROH-TECH: Monteur sieht eine einfache LISTE seiner Aufträge (kein Kalender-Raster) ──
+    if(isMonteurPickerTeam && !isAdminAccess && selectedMonteur){
+        const unlockedDateStr = toLocalDateStr(days[monteurUnlockedDayIndex]);
+        const myJobs = calEntries.filter(e=>{
+            if((e.calType||'montage')!==activeCalType) return false;
+            if(!(e.assignedMonteure||[]).includes(selectedMonteur)) return false;
+            if((e.deliveryDate||'').substring(0,10) > unlockedDateStr) return false;
+            const target = parseInt(e.target)||0;
+            const fertig = target>0 && (e.installedQty||0)>=target && !e.isBlocked;
+            // Fertige Aufträge verschwinden erst aus der Liste, wenn auch das Abnahmeprotokoll erledigt ist —
+            // sonst würde die Abnahme-Erinnerung nie angezeigt werden können.
+            if(fertig && e.abnahmeStatus==='done') return false;
+            return true;
+        }).sort((a,b)=> (a.deliveryDate||'').localeCompare(b.deliveryDate||''));
+        const dayKeys = ['dayMon','dayTue','dayWed','dayThu','dayFri','daySat'];
+        const mapsUrl = (addr)=> `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+        return (
+            <div style={{minHeight:'100vh',background:'#0f172a',padding:'14px 12px 40px',WebkitTapHighlightColor:'transparent'}}>
+                <div style={{maxWidth:560,margin:'0 auto'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                        <div>
+                            <h1 style={{color:'#fff',fontSize:16,fontWeight:900,margin:0}}>👷 {selectedMonteur}</h1>
+                            <div style={{color:'#64748b',fontSize:11,marginTop:1}}>{mt(frohLang,'myJobs')}</div>
+                        </div>
+                        <button onClick={()=>setSelectedMonteur(null)} style={{background:'none',border:'1px solid #334155',borderRadius:8,padding:'6px 10px',color:'#94a3b8',fontSize:10.5,cursor:'pointer',flex:'0 0 auto'}}>{mt(frohLang,'switchName')}</button>
+                    </div>
+                    <div style={{marginBottom:10}}><LangSwitcher lang={frohLang} onChange={setFrohLangState}/></div>
+                    <div style={{display:'flex',gap:5,marginBottom:12,flexWrap:'wrap'}}>
+                        {visibleTabs.map(ct=>{const cfg=CAL_TYPE_CONFIG[ct];return(
+                            <button key={ct} onClick={()=>setActiveCalType(ct)} style={{padding:'6px 11px',borderRadius:7,fontSize:10,fontWeight:900,textTransform:'uppercase',border:'none',cursor:'pointer',background:activeCalType===ct?cfg.bg:'#1e293b',color:'#fff'}}>{cfg.label}</button>
+                        );})}
+                    </div>
+                    {/* Tage-Leiste mit Schloss für noch nicht freigeschaltete Tage */}
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4,marginBottom:12}}>
+                        {dayKeys.map((dk,i)=>{
+                            const locked = i > monteurUnlockedDayIndex;
+                            const isToday = i === monteurUnlockedDayIndex;
+                            return (
+                                <div key={dk} style={{background:isToday?'#1d4ed8':'#1e293b',opacity:locked?0.45:1,borderRadius:8,padding:'6px 2px',textAlign:'center',border:isToday?'1px solid #60a5fa':'1px solid transparent'}}>
+                                    <div style={{color:isToday?'#fff':'#94a3b8',fontSize:9.5,fontWeight:800,textTransform:'uppercase'}}>{mt(frohLang,dk)}</div>
+                                    <div style={{fontSize:13,marginTop:2}}>{locked ? '🔒' : (isToday?'●':'✓')}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div style={{background:'#1e293b',borderRadius:9,padding:'8px 12px',marginBottom:14,fontSize:10.5,color:'#fbbf24',lineHeight:1.4}}>
+                        🔒 {DAY_NAMES[monteurUnlockedDayIndex]} {mt(frohLang,'dayLocked')} {monteurUnlockedDayIndex<5?DAY_NAMES[monteurUnlockedDayIndex+1]:''}{MONTEUR_I18N.dayLocked[frohLang+'2']||MONTEUR_I18N.dayLocked.de2}
+                    </div>
+                    {myJobs.length===0 && <div style={{color:'#475569',fontSize:13,textAlign:'center',padding:'40px 0'}}>{mt(frohLang,'noJobs')}</div>}
+                    <div style={{display:'flex',flexDirection:'column',gap:9}}>
+                        {myJobs.map(e=>{
+                            const ci = Math.abs((e.customer||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0) + (e.id||'').length) % CARD_COLORS.length;
+                            const isBlocked = e.isBlocked;
+                            const bg = isBlocked?'#3f1414':'#1e293b'; const border = isBlocked?'#ef4444':CARD_BORDER[ci]; const accent = isBlocked?'#fca5a5':CARD_BORDER[ci];
+                            const target = parseInt(e.target)||0;
+                            const lastDayStr = (e.endDate || e.deliveryDate || '').substring(0,10);
+                            const alleElementeMontiert = target>0 && (e.installedQty||0)>=target;
+                            const needsAbnahme = !isBlocked && e.abnahmeStatus!=='done' && (alleElementeMontiert || (lastDayStr && unlockedDateStr >= lastDayStr));
+                            return (
+                                <div key={e.id} style={{background:bg,borderLeft:'4px solid '+border,borderRadius:12,padding:'12px 14px',boxShadow:'0 1px 4px rgba(0,0,0,.3)'}}>
+                                    <div onClick={()=>setMonteurListJob(e)} style={{cursor:'pointer'}}>
+                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                                            <div style={{color:'#fff',fontWeight:800,fontSize:14.5}}>{e.customer}</div>
+                                            {isBlocked && <span style={{color:'#fca5a5',fontSize:10.5,fontWeight:800,flex:'0 0 auto'}}>⚠ {mt(frohLang,'blockedBtn')}</span>}
+                                        </div>
+                                        {e.memo && <div style={{color:'#fbbf24',opacity:.9,fontSize:11.5,marginTop:4,background:'rgba(251,191,36,.08)',borderRadius:6,padding:'4px 7px'}}>📝 {e.memo}</div>}
+                                        <div style={{color:'#94a3b8',fontSize:11,marginTop:5}}>{mt(frohLang,'orderNr')}: {e.auftragsNr||'—'} · {new Date(e.deliveryDate).toLocaleDateString(frohLang)}</div>
+                                        {target>0 && <div style={{color:accent,fontWeight:800,fontSize:13,marginTop:6}}>{e.installedQty||0}/{target} {mt(frohLang,'elementsInstalled')}</div>}
+                                    </div>
+                                    {needsAbnahme && (
+                                        <div onClick={()=>setAbnahmeJob(e)} style={{marginTop:9,background:'#7f1d1d',border:'2px solid #ef4444',borderRadius:9,padding:'9px 10px',cursor:'pointer',animation:'pulse-abnahme 2s infinite'}}>
+                                            <div style={{color:'#fecaca',fontWeight:900,fontSize:12.5,textAlign:'center',letterSpacing:.5}}>⚠️ ABNAHME MUSS GEMACHT WERDEN HEUTE</div>
+                                            <div style={{color:'#fca5a5',fontSize:10,textAlign:'center',marginTop:3,fontWeight:700}}>Antippen zum Ausfüllen</div>
+                                        </div>
+                                    )}
+                                    {e.address && (
+                                        <a href={mapsUrl(e.address)} target="_blank" rel="noopener noreferrer" onClick={ev=>ev.stopPropagation()}
+                                            style={{display:'flex',alignItems:'center',gap:6,marginTop:9,paddingTop:9,borderTop:'1px solid rgba(255,255,255,0.08)',color:'#60a5fa',fontSize:11.5,fontWeight:700,textDecoration:'none'}}>
+                                            📍 {e.address}
+                                        </a>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                {monteurListJob && (
+                    <MonteurJobSheet job={monteurListJob} monteurName={selectedMonteur} team={team} lang={frohLang} onClose={()=>setMonteurListJob(null)}/>
+                )}
+                {abnahmeJob && (
+                    <AbnahmeModal job={abnahmeJob} monteurName={selectedMonteur} team={team} onClose={()=>setAbnahmeJob(null)}/>
+                )}
             </div>
         );
     }
@@ -2731,7 +3271,7 @@ function CalendarView({ team, teams=[], onBack, isAdminAccess=false, isMontageFi
             )}
 
             {assignEntry&&(
-                <AssignMonteurModal entry={assignEntry} monteurs={monteurs} team={team} onClose={()=>setAssignEntry(null)}/>
+                <AssignMonteurModal entry={assignEntry} monteurs={monteursForPicker} team={team} onClose={()=>setAssignEntry(null)}/>
             )}
 
             {crossCopyEntry&&isAdminAccess&&(
@@ -3779,24 +4319,28 @@ function App() {
         if(!gateOk) return;
         const init=()=>{
             if(!window.FirebaseSDK||!window.AuthReady){setTimeout(init,100);return;}
-            const{db,collection,doc,setDoc,onSnapshot}=window.FirebaseSDK;
+            const{db,collection,doc,setDoc,deleteDoc,onSnapshot}=window.FirebaseSDK;
             let seeded=false;
             onSnapshot(collection(db,'teams_config'),snap=>{
                 const list=snap.docs.map(d=>({...d.data()}));
                 setTeams(list);
                 setReady(true);
-                // ── FROH-TECH-ERWEITERUNG: zwei feste Gruppen automatisch anlegen ──
+                // ── FROH-TECH-ERWEITERUNG: eine feste Gruppe automatisch anlegen ──
                 if(!seeded){
                     seeded=true;
                     const FIXED_GROUPS=[
                         {id:'froh-tech',name:'Froh-Tech',pin:'0001',color:'#2563eb',calType:'all',fixed:true},
-                        {id:'froh-tech-montage',name:'Froh-Tech Montage',pin:'0002',color:'#8b5cf6',calType:'all',fixed:true},
                     ];
                     FIXED_GROUPS.forEach(g=>{
                         if(!list.some(t=>t.id===g.id)){
                             setDoc(doc(db,'teams_config',g.id),g).catch(e=>console.warn('Fixe Gruppe anlegen fehlgeschlagen',e));
                         }
                     });
+                    // Alte "Froh-Tech Montage"-Gruppe entfernen — Monteure nutzen jetzt denselben
+                    // PIN 0001 und erhalten dort automatisch ihre eigene Listenansicht.
+                    if(list.some(t=>t.id==='froh-tech-montage')){
+                        deleteDoc(doc(db,'teams_config','froh-tech-montage')).catch(e=>console.warn('Alte Gruppe löschen fehlgeschlagen',e));
+                    }
                 }
             },err=>{console.error(err);setReady(true);});
         };init();
@@ -3825,15 +4369,15 @@ function App() {
     if(authState.role==='admin'){
         if(authState.showStandby)return <><StandbyView onBack={()=>setAuthState(prev=>({...prev,showStandby:false}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
         if(authState.showSearch)return <><GlobalSearchModal teams={teams} onClose={()=>setAuthState(prev=>({...prev,showSearch:false}))} onNavigate={(entry,team)=>{setAuthState(prev=>({...prev,showSearch:false,adminViewingTeam:team,adminCalType:entry.calType||'montage',scrollToEntry:entry}));}}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
-        if(authState.adminViewingTeam)return <><CalendarView key={authState.scrollToEntry?.id||authState.adminViewingTeam} team={authState.adminViewingTeam.id==='froh-tech-montage'?{...authState.adminViewingTeam,id:'froh-tech'}:authState.adminViewingTeam} isMontageFilterTeam={authState.adminViewingTeam.id==='froh-tech-montage'} teams={teams} isAdminAccess={true} activeCalType={authState.adminCalType||'montage'} scrollToEntry={authState.scrollToEntry||null} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(prev=>({...prev,adminViewingTeam:null,adminCalType:null,scrollToEntry:null}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
+        if(authState.adminViewingTeam)return <><CalendarView key={authState.scrollToEntry?.id||authState.adminViewingTeam} team={authState.adminViewingTeam} isMontageFilterTeam={false} teams={teams} isAdminAccess={true} activeCalType={authState.adminCalType||'montage'} scrollToEntry={authState.scrollToEntry||null} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(prev=>({...prev,adminViewingTeam:null,adminCalType:null,scrollToEntry:null}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
         return <><AdminPanel teams={teams} onLogout={()=>setAuthState(null)} onSelectTeam={(team,calType)=>setAuthState(prev=>({...prev,adminViewingTeam:team,adminCalType:calType,scrollToEntry:null}))} onOpenStandby={()=>setAuthState(prev=>({...prev,showStandby:true}))} onSearch={()=>setAuthState(prev=>({...prev,showSearch:true}))}/><VoiceAssistant teams={teams} isAdmin={true} onNavigate={handleVoiceNavigate} onCreateEntry={handleVoiceCreateEntry}/></>;
     }
 
     const team=authState.team;
     const teamTypes=parseCalTypes(team.calType);
     const defaultType=authState.activeCalType||teamTypes[0]||'montage';
-    const dataTeam = team.id==='froh-tech-montage' ? {...team,id:'froh-tech'} : team;
-    return <CalendarView key={voiceJumpTarget?.id||'main'} team={dataTeam} isMontageFilterTeam={team.id==='froh-tech-montage'} isAdminAccess={false} activeCalType={defaultType} scrollToEntry={voiceJumpTarget} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(null)}/>;
+    const dataTeam = team;
+    return <CalendarView key={voiceJumpTarget?.id||'main'} team={dataTeam} isMontageFilterTeam={true} isAdminAccess={false} activeCalType={defaultType} scrollToEntry={voiceJumpTarget} voicePrefill={voicePrefill} onVoicePrefillApplied={()=>setVoicePrefill(null)} onBack={()=>setAuthState(null)}/>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
