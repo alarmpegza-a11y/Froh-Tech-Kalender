@@ -1143,7 +1143,7 @@ function AbnahmeModal({ job, monteurName, team, onClose }){
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         objekt: job.customer||'', adresse: job.address||'', kunde: job.customer||'', wohnungen:'',
-        datum: new Date().toISOString().slice(0,10),
+        datum: toLocalDateStr(new Date()),
         system: 'duofix', systemSonstiges:'',
         checkliste: Object.fromEntries(ABNAHME_PRUEFPUNKTE.map(p=>[p,null])), // null|'ja'|'nein'
         maengel: [{ anlageteil:'', mangel:'', vorgehen:'' }],
